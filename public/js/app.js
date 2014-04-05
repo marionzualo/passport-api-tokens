@@ -14,18 +14,23 @@ var app = angular.module('app', ['ngResource', 'ngRoute'])
             var deferred = $q.defer();
 
             // Make an AJAX call to check if the user is logged in
-            $http.get('/loggedin').success(function(data){
-                // Authenticated
-                if (data.authenticated){
-                    $timeout(deferred.resolve, 0);
-                }
-                // Not Authenticated
-                else {
-                    $rootScope.message = 'You need to log in.';
-                    $timeout(function(){deferred.reject();}, 0);
+            $http.get('/loggedin')
+                .success(function(data){
+                    // Authenticated
+                    if (data.authenticated){
+                        $timeout(deferred.resolve, 0);
+                    }
+                    // Not Authenticated
+                    else {
+                        $rootScope.message = 'You need to log in.';
+                        $timeout(function(){deferred.reject();}, 0);
+                        $location.url('/login');
+                    }
+                })
+                .error(function(data){
+                    $rootScope.message = 'Please login.';
                     $location.url('/login');
-                }
-            });
+                });
 
             return deferred.promise;
         };
@@ -155,6 +160,22 @@ app.controller('LoginCtrl', function($scope, $rootScope, $http, $location, $wind
  * WelcomePage controller
  **********************************************************************/
 app.controller('WelcomeCtrl', function($scope, $rootScope, $http, $location, $window) {
+
+    //Access secured route to get the greeting from the server
+    $http.get('/welcome')
+        .success(function(data){
+            $scope.serverGreeting = data.message;
+        })
+        .error(function(){
+            // Error: logout failed
+            $scope.serverGreeting = null;
+            $rootScope.isAuthenticated = false;
+            delete $window.sessionStorage.token;
+
+            $rootScope.message = 'Please login.';
+            $location.url('/login');
+        });
+
     // Register the login() function
     $scope.logout = function(){
         var token = Store.getToken();
@@ -185,6 +206,8 @@ app.controller('WelcomeCtrl', function($scope, $rootScope, $http, $location, $wi
 
 app.factory('authInterceptor', function ($rootScope, $q, $location, $window) {
     return {
+        //This interceptor adds the token to each request in case it exists
+        //It also handles the situations in which the user gets an authentication error
         request: function (config) {
             config.headers = config.headers || {};
             if ($window.sessionStorage.token) {

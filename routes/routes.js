@@ -56,6 +56,7 @@ module.exports = function (app, passport) {
         });
     });
 
+    //Route that authenticates the user
     app.post('/token/', passport.authenticate('local', {session: false}), function(req, res) {
         if (req.user) {
             Account.createUserToken(req.user.email, function(err, usersToken) {
@@ -101,44 +102,26 @@ module.exports = function (app, passport) {
         }
     };
 
-    // route to test if the user is logged in or not
-    app.get('/loggedin', function(req, res) {
-        var incomingToken = req.headers.token;
-        isAuthenticated(incomingToken, function(isLoggedIn){
-            res.send({authenticated: isLoggedIn});
+    // Define a middleware function to be used for every secured routes
+    var auth = function(req, res, next){
+        var token = req.headers.token;
+        isAuthenticated(token, function(isLoggedIn){
+           if(isLoggedIn){
+               next();
+           } else{
+               res.send(401);
+           }
         });
+    };
+
+    // route to test if the user is logged in or not
+    app.get('/loggedin', auth, function(req, res) {
+        res.json({authenticated: true});
     });
 
-    app.get('/apitest/', function(req, res) {
-        var incomingToken = req.headers.token;
-        console.log('incomingToken: ' + incomingToken);
-        var decoded = Account.decode(incomingToken);
-        //Now do a lookup on that email in mongodb ... if exists it's a real user
-        if (decoded && decoded.email) {
-            Account.findUser(decoded.email, incomingToken, function(err, user) {
-                if (err) {
-                    console.log(err);
-                    res.json({error: 'Issue finding user.'});
-                } else {
-                    if (Token.hasExpired(user.token.date_created)) {
-                        console.log("Token expired...TODO: Add renew token funcitionality.");
-                        res.json({error: 'Token expired. You need to log in again.'});
-                    } else {
-                        res.json({
-                            user: {
-                                email: user.email,
-                                full_name: user.full_name,
-                                token: user.token.token,
-                                message: "This is just a simulation of an API endpoint; and we wouldn't normally return the token in the http response...doing so for test purposes only :)"
-                            }
-                        });
-                    }
-                }
-            });
-        } else {
-            console.log('Whoa! Couldn\'t even decode incoming token!');
-            res.json({error: 'Issue decoding incoming token.'});
-        }
+    app.get('/welcome', auth, function(req, res) {
+        //Authentication is done through the middleware
+        res.json({message: 'Hello World!'})
     });
 
     app.get('/logout(\\?)?', function(req, res) {
