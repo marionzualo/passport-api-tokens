@@ -10,7 +10,7 @@ var mongoose = require('mongoose'),
 
 var Token = new Schema({
     token: {type: String},
-    date_created: {type: Date, default: Date.now},
+    date_created: {type: Date, default: Date.now}
 });
 Token.statics.hasExpired= function(created) {
     var now = new Date();

@@ -74,6 +74,41 @@ module.exports = function (app, passport) {
         }
     });
 
+    function isAuthenticated(token, cb) {
+        if(token === undefined){
+            cb(false);
+            return;
+        }
+        var tokenDecoded = Account.decode(token);
+
+        if (tokenDecoded && tokenDecoded.email) {
+            Account.findUser(tokenDecoded.email, token, function(err, user) {
+                if (err) {
+                    console.log(err);
+                    cb(false);
+                    return;
+                } else {
+                    if (Token.hasExpired(user.token.date_created)) {
+                        console.log("Token expired.");
+                        cb(false);
+                        return;
+                    } else {
+                        cb(true);
+                        return;
+                    }
+                }
+            });
+        }
+    };
+
+    // route to test if the user is logged in or not
+    app.get('/loggedin', function(req, res) {
+        var incomingToken = req.headers.token;
+        isAuthenticated(incomingToken, function(isLoggedIn){
+            res.send({authenticated: isLoggedIn});
+        });
+    });
+
     app.get('/apitest/', function(req, res) {
         var incomingToken = req.headers.token;
         console.log('incomingToken: ' + incomingToken);
@@ -105,8 +140,8 @@ module.exports = function (app, passport) {
             res.json({error: 'Issue decoding incoming token.'});
         }
     });
+
     app.get('/logout(\\?)?', function(req, res) {
-        var messages = flash('Logged out', null);
         var incomingToken = req.headers.token;
         console.log('LOGOUT: incomingToken: ' + incomingToken);
         if (incomingToken) {
@@ -118,7 +153,7 @@ module.exports = function (app, passport) {
                     console.log('user: ', user);
                     if (err) {
                         console.log(err);
-                        res.json({error: 'Issue finding user (in unsuccessful attempt to invalidate token).'});
+                        res.send(401, 'Issue finding user (in unsuccessful attempt to invalidate token).');
                     } else {
                         console.log("sending 200")
                         res.json({message: 'logged out'});
@@ -126,105 +161,8 @@ module.exports = function (app, passport) {
                 });
             } else {
                 console.log('Whoa! Couldn\'t even decode incoming token!');
-                res.json({error: 'Issue decoding incoming token.'});
+                res.send(401, 'Issue decoding incoming token.');
             }
-        }
-    });
-
-    app.get('/forgot', function(req, res) {
-        res.render('forgot');
-    });
-
-    app.post('/forgot', function(req, res) {
-
-        Account.generateResetToken(req.body.email, function(err, user) {
-            if (err) {
-                res.json({error: 'Issue finding user.'});
-            } else {
-                var token = user.reset_token;
-                var resetLink = 'http://localhost:1337/reset/'+ token + '/' + user.email ;
-
-                //TODO: This is all temporary hackish. When we have email configured
-                //properly, all this will be stuffed within that email instead :)
-                res.send('<h2>Reset Email (simulation)</h2><br><p>To reset your password click the URL below.</p><br>' +
-                '<a href=' + resetLink + '>' + resetLink + '</a><br>' +
-                'If you did not request your password to be reset please ignore this email and your password will stay as it is.');
-            }
-        });
-    });
-
-    app.get('/reset/:id/:email', function(req, res) {
-        console.log('GOT IN /reset/:id...');
-        var token = req.params.id,
-            email = req.params.email,
-            messages = flash(null, null);
-
-        if (!token) {
-            console.log('Issue getting reset :id');
-            //TODO: Error response...
-        }
-        else {
-            console.log('In ELSE ... good to go.');
-            //TODO
-            //
-            //1. find user with reset_token == token .. no match THEN error
-            //2. check now.getTime() < reset_link_expires_millis
-            //3. if not expired, present reset password page/form
-            res.render('resetpass', {email: email});
-        }
-    });
-
-
-    app.post('/reset/password', function(req, res) {
-        console.log("GOT IN")
-        var email = req.body.email;
-        var currentPassword = req.body.current_password;
-        var newPassword = req.body.new_password;
-        var confirmationPassword = req.body.confirm_new_password;
-        // console.log("email: ", email);
-        // console.log("currentPassword: ", currentPassword);
-        // console.log("newPassword: ", newPassword);
-        // console.log("confirmationPassword: ", confirmationPassword);
-
-        if (email && currentPassword && newPassword && confirmationPassword && (newPassword === confirmationPassword)) {
-
-            Account.findUserByEmailOnly(email, function(err, user) {
-                if (err) {
-                    console.log("error: ", err);
-                    res.json({err: 'Issue while finding user.'});
-                } else if (!user) {
-                    console.log("Unknown user");
-                    res.json({err: 'Unknown user email: ' + email});
-                } else if (user) {
-                    console.log("FOUND USER .. now going call Account.authenticate...");
-                    Account.authenticate()(email, currentPassword, function (err, isMatch, options) {
-                        if (err) {
-                            console.log("error: ", err);
-                            res.json({err: 'Error while verifying current password.'});
-                        } else if (!isMatch) {
-                            res.json({err: 'Current password does not match'});
-                        } else {
-                            user.setPassword(newPassword, function(err, user) {
-                                if (err) {
-                                    console.log("error: ", err);
-                                    res.json({err: 'Issue while setting new password.'});
-                                }
-                                user.save(function(err, usr) {
-                                    if (err) {
-                                        cb(err, null);
-                                    } else {
-                                        //TODO, client will redirect to Login page (they won't have a current token)
-                                        res.json({message: 'Password updated.'});
-                                    }
-                                });
-                            });
-                        }
-                    });
-                }
-            });
-        } else {
-            //TODO Better error message,etc.
-            res.json({error: 'Missing email, current, new, or confirmation password, OR, the confirmation does not match.'});
         }
     });
 

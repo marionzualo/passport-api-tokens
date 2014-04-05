@@ -1,7 +1,8 @@
 <div class="grid-fluid">
-    <div class="flash"> {{message}} </div>
+
     <form ng-submit="login()" id="sign-up-form" class="c4 a4 b4 form">
         <h2>Login</h2>
+        <div class="flash"> {{message}} </div>
         <div class="form-field-group">
             <input class="email form-field clearfix" type="email" ng-model="user.email" placeholder="Email">
         </div>
