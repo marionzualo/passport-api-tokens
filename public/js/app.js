@@ -1,126 +1,138 @@
-$('document').ready(function() {
+'use strict';
 
-    window.Store = {
-        user: null,
-        setUser: function(user) {
-            this.user = user;
-        },
-        getUser: function() {
-            return this.user;
-        },
-        getToken: function() {
-            return this.user ? this.getUser().token : null;
-        },
-        removeUser: function() {
-            delete this.user;
-        }
-    };
+/**********************************************************************
+ * Angular Application
+ **********************************************************************/
+var app = angular.module('app', ['ngResource', 'ngRoute'])
+    .config(function($routeProvider, $locationProvider, $httpProvider) {
 
-    /////////////////////////////////////////////////////////////////
-    // AUTH TOKEN ///////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////
-    $('#login').on("click", function(e) {
-        var email = $('.email').val();
-        var password = $('.password').val();
-        $.ajax({
-            type: "POST",
-            cache: false,
-            dataType: "json",
-            url: "/token/",
-            data: {email:email, password:password},
-            success: function(data){
-                Store.setUser({email: email, token: data.token});
-                console.log("Finished setting user: " + email + ", Token: " + data.token);
-                alert("You're now logged in. Try clicking the 'Test Token' button next.");
-            },
-            error: function(data) {
-                alert(data.statusText);
+
+        //================================================
+        // Add an interceptor for AJAX errors
+        //================================================
+        $httpProvider.responseInterceptors.push(function($q, $location) {
+            return function(promise) {
+                return promise.then(
+                    // Success: just return the response
+                    function(response){
+                        return response;
+                    },
+                    // Error: check the error status to get only the 401
+                    function(response) {
+                        if (response.status === 401)
+                            $location.url('/login');
+                        return $q.reject(response);
+                    }
+                );
             }
         });
-    });
 
-    /////////////////////////////////////////////////////////////////
-    // AUTH TOKEN ///////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////
-    $('#resetPassword').on("click", function(e) {
-        var $form = $(this).closest('form');
-        var email = $form.find("input[name='email']").val();
-        var currPass = $form.find("input[name='current_password']").val();
-        var newPass = $form.find("input[name='new_password']").val();
-        var confirmPass = $form.find("input[name='confirm_new_password']").val();
-        if (email) {
-            $.ajax({
-                type: "POST",
-                cache: false,
-                dataType: "json",
-                url: '/reset/password',
-                data: {email:email, current_password:currPass, new_password: newPass, confirm_new_password: confirmPass},
-                success: function() {
-                    alert("Password updated ... Now go to http://localhost:1337/login to log in with new password.");
-                },
-                error: function(data) {
-                    alert(data.statusText);
-                }
+        //================================================
+        // Define all the routes
+        //================================================
+        $routeProvider
+            .when('/', {
+                templateUrl: '/views/register.html',
+                controller: 'RegisterCtrl'
+            })
+            .when('/welcomePage', {
+                templateUrl: 'views/welcomePage.html',
+                controller: 'WelcomePageCtrl'
+            })
+            .when('/login', {
+                templateUrl: 'views/login.html',
+                controller: 'LoginCtrl'
+            })
+            .otherwise({
+                redirectTo: '/'
             });
-        }
+        //================================================
+    })// end of config()
+    .run(function($rootScope, $http){
+        window.Store = {
+            user: null,
+            setUser: function(user) {
+                this.user = user;
+            },
+            getUser: function() {
+                return this.user;
+            },
+            getToken: function() {
+                return this.user ? this.getUser().token : null;
+            },
+            removeUser: function() {
+                delete this.user;
+            }
+        };
+
+        $rootScope.message = '';
+
+        // Logout function is available in any pages
+        $rootScope.logout = function(){
+            $rootScope.message = 'Logged out.';
+            $http.post('/logout');
+        };
     });
 
-    /////////////////////////////////////////////////////////////////
-    // LOGOUT ///////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////
-    $('.logout').on("click", function(e) {
+/**********************************************************************
+ * Register controller
+ **********************************************************************/
+app.controller('RegisterCtrl', function($scope, $rootScope, $http, $location) {
+    // This object will be filled by the form
+    $scope.user = {};
 
-        var token = Store.getToken();
-        Store.removeUser();
-        if (token) {
-            $.ajax({
-                type: "GET",
-                cache: false,
-                dataType: "json",
-                url: "/logout",
-                headers: {
-                    token: token
-                },
-                success: function(data) {
-                    console.log(data);
-                    if (data.error) {
-                        alert("Issue logging out.");
-                    } else {
-                        alert("You're now logged out.");
-                    }
-                }
+    // Register the login() function
+    $scope.register = function(){
+        $http.post('/register', {
+            fullname: $scope.user.fullname,
+            email: $scope.user.email,
+            password: $scope.user.password
+        })
+            .success(function(data){
+                // No error: registration OK
+                $rootScope.message = data.message;
+                $location.url('/login');
+            })
+            .error(function(){
+                // Error: registration failed
+                $rootScope.message = 'Registration failed.';
+                $location.url('/');
             });
-        } else {
-            alert("No token");
-        }
-    });
+    };
+});
 
-    /////////////////////////////////////////////////////////////////
-    // SIMULATE API REQUEST /////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////
-    $('.testToken').on("click", function(e) {
-        var token = Store.getToken();
-        if (token) {
-            $.ajax({
-                type: "GET",
-                cache: false,
-                dataType: "json",
-                url: "/apitest/",
-                headers: {
-                    token: token
-                },
-                success: function(data) {
-                    if (data.error) {
-                        alert("Error: " + data.error);
-                    } else {
-                        console.log(data.user);
-                        alert("Token callback worked! Check console");
-                    }
-                }
+/**********************************************************************
+ * Login controller
+ **********************************************************************/
+app.controller('LoginCtrl', function($scope, $rootScope, $http, $location) {
+    // This object will be filled by the form
+    $scope.user = {};
+
+    // Register the login() function
+    $scope.login = function(){
+        $http.post('/token/', {
+            email: $scope.user.email,
+            password: $scope.user.password
+        })
+            .success(function(data){
+                // No error: authentication OK
+                $rootScope.message = 'Authentication successful!';
+                $location.url('/welcomePage');
+                Store.setUser({email: $scope.user.email, token: data.token});
+                console.log("Finished setting user: " + $scope.user.email + ", Token: " + data.token);
+            })
+            .error(function(){
+                // Error: authentication failed
+                $rootScope.message = 'Authentication failed.';
+                $location.url('/login');
             });
-        } else {
-            alert("No token");
-        }
-    });
+    };
+});
+
+/**********************************************************************
+ * WelcomePage controller
+ **********************************************************************/
+app.controller('WelcomePageCtrl', function($scope, $rootScope, $http, $location) {
+
 
 });

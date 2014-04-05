@@ -18,7 +18,7 @@ module.exports = function (app, passport) {
     * @param {Object} res the response object
     */
     app.get('/', function (req, res) {
-        res.render('register', {info: null, err: null});
+        res.render('index', {info: null, err: null});
     });
 
 
@@ -47,29 +47,13 @@ module.exports = function (app, passport) {
                     message = flash(null, 'Sorry. There was an error processing your request. Please try again or contact technical support.');
                 }
 
-                res.render('register', message);
+                res.send(401, message);
             }
             else {
                 //Successfully registered user
-                res.redirect('login?registered=1');
+                res.json({message: "Thanks for registering"});
             }
         });
-    });
-
-    /**
-    * Login method
-    *
-    * @param {Object} req the request object
-    * @param {Object} res the response object
-    */
-    app.get('/login', function(req, res) {
-        var messages = flash(null, null);
-
-        if (req.param('registered') === '1') {
-            messages = flash('Congratulations, your account was created!', null);
-        }
-
-        res.render('login', messages);
     });
 
     app.post('/token/', passport.authenticate('local', {session: false}), function(req, res) {
@@ -78,13 +62,15 @@ module.exports = function (app, passport) {
                 // console.log('token generated: ' +usersToken);
                 // console.log(err);
                 if (err) {
-                    res.json({error: 'Issue generating token'});
+                    console.log('Issue generating token');
+                    console.log(err);
+                    res.send(401, 'Authentication error');
                 } else {
                     res.json({token : usersToken});
                 }
             });
         } else {
-            res.json({error: 'AuthError'});
+            res.send(401, 'Authentication error');
         }
     });
 

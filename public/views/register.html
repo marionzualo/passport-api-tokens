@@ -1,0 +1,22 @@
+<section id="sign-up-form clearfix">
+    <div class="grid-fluid">
+        <div class="c4 a4 b4">
+            <form ng-submit="register()" class="form">
+                <h2>SIGN UP</h2>
+                <div class="form-field-group">
+                    <input class="fullname clearfix" type="text" name="fullname" ng-model="user.fullname" placeholder="Full name"><br>
+                </div>
+                <div class="form-field-group">
+                    <input class="email clearfix" type="email" name="email" ng-model="user.email" placeholder="Email"><br>
+                </div>
+                <div class="form-field-group">
+                    <input class="password clearfix" type="password" name="password" ng-model="user.password" placeholder="Password"><br>
+                </div>
+                <div class="form-field-group">
+                    <input type="submit" class="button button-large  button-rounded button-flat-primary" value="Sign me up!"/>
+                </div>
+            </form>
+            <a class="button button-block button-border-secondary button-rounded" href="#/login">Already a member? Login.</a>
+        </div>
+    </div>
+</section>
