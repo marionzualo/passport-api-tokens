@@ -35,9 +35,9 @@ var app = angular.module('app', ['ngResource', 'ngRoute'])
                 templateUrl: '/views/register.html',
                 controller: 'RegisterCtrl'
             })
-            .when('/welcomePage', {
-                templateUrl: 'views/welcomePage.html',
-                controller: 'WelcomePageCtrl'
+            .when('/welcome', {
+                templateUrl: 'views/welcome.html',
+                controller: 'WelcomeCtrl'
             })
             .when('/login', {
                 templateUrl: 'views/login.html',
@@ -117,7 +117,7 @@ app.controller('LoginCtrl', function($scope, $rootScope, $http, $location) {
             .success(function(data){
                 // No error: authentication OK
                 $rootScope.message = 'Authentication successful!';
-                $location.url('/welcomePage');
+                $location.url('/welcome');
                 Store.setUser({email: $scope.user.email, token: data.token});
                 console.log("Finished setting user: " + $scope.user.email + ", Token: " + data.token);
             })
@@ -132,7 +132,28 @@ app.controller('LoginCtrl', function($scope, $rootScope, $http, $location) {
 /**********************************************************************
  * WelcomePage controller
  **********************************************************************/
-app.controller('WelcomePageCtrl', function($scope, $rootScope, $http, $location) {
+app.controller('WelcomeCtrl', function($scope, $rootScope, $http, $location) {
+    // Register the login() function
+    $scope.logout = function(){
+        var token = Store.getToken();
+        Store.removeUser();
 
+        $http.post('/logout', {
+            email: $scope.user.email,
+            password: $scope.user.password
+        })
+            .success(function(data){
+                // No error: authentication OK
+                $rootScope.message = 'Authentication successful!';
+                $location.url('/welcome');
+                Store.setUser({email: $scope.user.email, token: data.token});
+                console.log("Finished setting user: " + $scope.user.email + ", Token: " + data.token);
+            })
+            .error(function(){
+                // Error: authentication failed
+                $rootScope.message = 'Authentication failed.';
+                $location.url('/login');
+            });
+    };
 
 });
