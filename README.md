@@ -1,3 +1,14 @@
+# REST API Tokens with Passport.js, jwt-simple and AngularJS
+
+This an adaptation of this [repository](https://github.com/roblevintennis/passport-api-tokens). Basically I adapted the frontend so it
+would use AngularJS. I only kept the routes that ensure basic registration/login so if you are looking for a more detailed example
+take a look at the original repository.
+
+I kind of got inspired by the following articles:
+- https://vickev.com/#!/article/authentication-in-single-page-applications-node-js-passportjs-angularjs
+- http://blog.auth0.com/2014/01/07/angularjs-authentication-with-cookies-vs-token/
+- https://github.com/roblevintennis/passport-api-tokens
+
 # REST API Tokens With Passport.js and jwt-simple
 
 - Demonstrates how to use auth token to Node.js with Passport.js and jwt-simple which is useful for building a token-based REST API.
